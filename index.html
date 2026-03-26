@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pulso Operativo MICA</title>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --green:#72DDA3;--blue:#BBE3E3;--yellow:#F3CE98;
+    --coral:#FFB59C;--pink:#F9D3CD;--bg:#F5F5F5;
+    --white:#FFFFFF;--dark:#1F2937;--mid:#374151;--muted:#6B7280;--faint:#9CA3AF;
+  }
+  body{background:var(--bg);font-family:'Red Hat Display',sans-serif;color:var(--dark);min-height:100vh}
+
+  /* ── UPLOAD SCREEN ── */
+  #uploadScreen{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100vh;padding:2rem;text-align:center;
+  }
+  .upload-logo{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:2.5rem}
+  .upload-logo span{color:var(--dark)}
+  .upload-h{font-size:32px;font-weight:700;color:var(--dark);margin-bottom:.5rem;line-height:1.15}
+  .upload-sub{font-size:14px;color:var(--muted);margin-bottom:2.5rem;font-weight:400}
+  .drop-zone{
+    width:100%;max-width:440px;border:2px dashed #D1D5DB;border-radius:20px;
+    padding:3rem 2rem;cursor:pointer;transition:all .2s;background:var(--white);position:relative;
+  }
+  .drop-zone:hover,.drop-zone.over{border-color:var(--green);background:#F0FDF6}
+  .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .drop-icon{font-size:40px;margin-bottom:1rem}
+  .drop-label{font-size:15px;font-weight:700;color:var(--dark);margin-bottom:.35rem}
+  .drop-hint{font-size:12px;color:var(--faint)}
+  .upload-note{margin-top:1.5rem;font-size:11px;color:var(--faint);max-width:340px}
+  .upload-note strong{color:var(--mid)}
+  #uploadError{color:#DC2626;font-size:12px;margin-top:1rem;font-weight:600;display:none}
+
+  /* ── DASHBOARD ── */
+  #dashboard{display:none;max-width:960px;margin:0 auto;padding:1.25rem 1rem 3rem}
+  .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+  .top-bar-left h1{font-size:22px;font-weight:700;color:var(--dark)}
+  .top-bar-left p{font-size:11px;color:var(--muted);margin-top:2px}
+  .btn-reload{
+    display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:99px;
+    border:1.5px solid #D1D5DB;background:var(--white);font-size:12px;font-weight:700;
+    color:var(--mid);cursor:pointer;font-family:'Red Hat Display',sans-serif;transition:all .15s;
+  }
+  .btn-reload:hover{border-color:var(--green);color:var(--dark)}
+  .file-badge{font-size:10px;background:var(--bg);color:var(--muted);padding:3px 10px;border-radius:99px;font-weight:600}
+
+  /* tabs */
+  .tabs{display:flex;gap:6px;margin-bottom:1.1rem;flex-wrap:wrap}
+  .tab{
+    padding:7px 16px;font-size:12px;font-weight:700;color:var(--mid);cursor:pointer;
+    border:none;background:var(--white);border-radius:99px;border:1.5px solid transparent;
+    transition:all .15s;font-family:'Red Hat Display',sans-serif;
+  }
+  .tab.active{background:var(--green);color:var(--dark);border-color:var(--green)}
+  .tab:hover:not(.active){border-color:var(--green)}
+  .section{display:none}.section.active{display:block}
+
+  /* cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;margin-bottom:11px}
+  .card{background:var(--white);border-radius:12px;padding:13px 15px}
+  .cl{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+  .cv{font-size:22px;font-weight:700;color:var(--dark)}
+  .cs{font-size:10px;color:var(--faint);margin-top:2px}
+
+  /* box */
+  .box{background:var(--white);border-radius:12px;padding:15px;margin-bottom:11px}
+  .bt{font-size:12px;font-weight:700;color:var(--dark);margin-bottom:10px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+  .ch{position:relative}
+
+  /* weekly */
+  .wsec{background:var(--white);border-radius:12px;padding:15px;margin-bottom:11px;border-left:3px solid var(--green)}
+  .wsec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--green);margin-bottom:10px}
+  .wtable{width:100%;border-collapse:collapse;font-size:11px;font-family:'Red Hat Display',sans-serif}
+  .wtable th{color:var(--muted);font-weight:700;padding:5px 7px;text-align:right;border-bottom:2px solid var(--bg);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  .wtable th:first-child{text-align:left}
+  .wtable td{padding:5px 7px;text-align:right;border-bottom:1px solid var(--bg);font-weight:600;color:var(--dark);white-space:nowrap}
+  .wtable td:first-child{text-align:left;color:var(--mid);font-weight:400}
+  .wtable tr.current td{background:#F0FDF6}
+  .wtable tr.current td:first-child{font-weight:700;color:#065F46}
+
+  /* zoom */
+  .zoom-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px}
+  .zcard{background:var(--white);border-radius:12px;padding:13px}
+  .ztitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px}
+  .zstats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}
+  .zs{background:var(--bg);border-radius:9px;padding:7px 9px}
+  .zsl{font-size:10px;color:var(--muted);font-weight:600}
+  .zsv{font-size:16px;font-weight:700;color:var(--dark)}
+
+  /* bars */
+  .bar-g{display:flex;flex-direction:column;gap:5px}
+  .brow{display:flex;align-items:center;gap:6px;font-size:10px}
+  .blbl{flex-shrink:0;color:var(--mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-weight:600}
+  .btrk{flex:1;height:17px;background:var(--bg);border-radius:99px;overflow:hidden}
+  .bfll{height:100%;border-radius:99px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;min-width:24px}
+  .bfll span{font-size:9px;font-weight:700;color:#fff;white-space:nowrap}
+
+  /* reason cards */
+  .rc{background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:9px}
+  .rd{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .rdesc{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.4}
+
+  /* pills */
+  .pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:700}
+  .delta{font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;display:inline-block}
+  .up{background:#E8FAF1;color:#065F46}.dn{background:#FEF2F2;color:#7F1D1D}.fl{background:var(--bg);color:var(--muted)}
+
+  /* legend */
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:7px}
+  .li{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-weight:600}
+  .ld{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+  .sep{font-size:10px;font-weight:700;color:var(--faint);margin:11px 0 8px;text-transform:uppercase;letter-spacing:.06em}
+
+  /* loading */
+  #loadingMsg{display:none;text-align:center;padding:4rem;font-size:13px;color:var(--muted);font-weight:600}
+  .spinner{width:32px;height:32px;border:3px solid var(--bg);border-top:3px solid var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 1rem}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media(max-width:540px){
+    .row2,.zoom-grid{grid-template-columns:1fr}
+    .upload-h{font-size:24px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     UPLOAD SCREEN
+══════════════════════════════════════════ -->
+<div id="uploadScreen">
+  <div class="upload-logo">MICA · <span>Pulso Operativo</span></div>
+  <h1 class="upload-h">Sube tu base<br>para generar el reporte</h1>
+  <p class="upload-sub">El archivo se procesa en tu navegador — ningún dato sale de tu computadora</p>
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <div class="drop-icon">📊</div>
+    <div class="drop-label">Arrastra tu Excel aquí</div>
+    <div class="drop-hint">o haz clic para seleccionar · .xlsx</div>
+  </div>
+  <div id="uploadError">No encontré la hoja de datos. Verifica que el archivo sea correcto.</div>
+  <p class="upload-note">Exporta desde Google Sheets como <strong>.xlsx</strong> y sube el archivo. El dashboard se genera automáticamente.</p>
+</div>
+
+<!-- ══════════════════════════════════════════
+     LOADING
+══════════════════════════════════════════ -->
+<div id="loadingMsg">
+  <div class="spinner"></div>
+  Procesando datos...
+</div>
+
+<!-- ══════════════════════════════════════════
+     DASHBOARD
+══════════════════════════════════════════ -->
+<div id="dashboard">
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <h1>Pulso Operativo MICA</h1>
+      <p id="fileLabel">Investigación · operaciones MICA</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="file-badge" id="fileBadge"></span>
+      <button class="btn-reload" onclick="resetDashboard()">↩ Cambiar archivo</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="sw('vol',this)">Volumen</button>
+    <button class="tab" onclick="sw('arch',this)">Archivados</button>
+    <button class="tab" onclick="sw('funnel',this)">Funnel</button>
+    <button class="tab" onclick="sw('sla',this)">SLA</button>
+  </div>
+
+  <!-- ── VOLUMEN ── -->
+  <div class="section active" id="tab-vol">
+    <div class="cards" id="volCards"></div>
+    <div class="wsec">
+      <div class="wsec-title">Resumen semanal — últimas 8 semanas</div>
+      <div style="overflow-x:auto"><table class="wtable" id="volWeekTable"></table></div>
+    </div>
+    <div class="sep">Zoom — 2 meses más recientes</div>
+    <div class="zoom-grid" id="volZoom"></div>
+    <div class="box">
+      <div class="bt">Aplicaciones por día — últimos 2 meses</div>
+      <div class="ch" style="height:160px"><canvas id="dayChart"></canvas></div>
+      <div class="legend" id="dayLegend"></div>
+    </div>
+    <div class="box">
+      <div class="bt">Apps por mes · % MoM</div>
+      <div class="ch" style="height:185px"><canvas id="volChart"></canvas></div>
+      <div id="growthRow" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:9px"></div>
+    </div>
+    <div class="box">
+      <div class="bt">Monto ingresado por mes</div>
+      <div class="ch" style="height:145px"><canvas id="montoChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── ARCHIVADOS ── -->
+  <div class="section" id="tab-arch">
+    <div class="cards" id="archCards"></div>
+    <div class="wsec">
+      <div class="wsec-title">Resumen semanal — últimas 8 semanas</div>
+      <div style="overflow-x:auto"><table class="wtable" id="archWeekTable"></table></div>
+    </div>
+    <div class="sep">Zoom — 2 meses más recientes</div>
+    <div class="zoom-grid" id="archZoom"></div>
+    <div class="row2">
+      <div class="box" style="margin-bottom:0">
+        <div class="bt">Composición · % por razón</div>
+        <div class="ch" style="height:160px"><canvas id="archPie"></canvas></div>
+        <div class="legend" id="archLegend"></div>
+      </div>
+      <div class="box" style="margin-bottom:0">
+        <div class="bt">Razones · detalle</div>
+        <div id="reasonCards"></div>
+      </div>
+    </div>
+    <div class="row2" style="margin-top:11px">
+      <div class="box" style="margin-bottom:0">
+        <div class="bt">Top agencias · % archivados</div>
+        <div style="font-size:10px;color:var(--faint);font-weight:600;margin-bottom:7px">arch / total apps de la agencia</div>
+        <div class="bar-g" id="archAgencyBars"></div>
+      </div>
+      <div class="box" style="margin-bottom:0">
+        <div class="bt">Top brokers sin agencia</div>
+        <div style="font-size:10px;color:var(--faint);font-weight:600;margin-bottom:7px">brokers independientes</div>
+        <div class="bar-g" id="archBrokerBars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FUNNEL ── -->
+  <div class="section" id="tab-funnel">
+    <div class="cards" id="funnelCards"></div>
+    <div class="wsec">
+      <div class="wsec-title">Resumen semanal — últimas 8 semanas</div>
+      <div style="overflow-x:auto"><table class="wtable" id="funnelWeekTable"></table></div>
+    </div>
+    <div class="sep">Zoom — 2 meses más recientes</div>
+    <div class="zoom-grid" id="funnelZoom"></div>
+    <div class="box">
+      <div class="bt">Conversión por mes</div>
+      <div class="ch" style="height:185px"><canvas id="funnelMesChart"></canvas></div>
+      <div class="legend" style="margin-top:7px">
+        <span class="li"><span class="ld" style="background:var(--green)"></span>Aprobadas</span>
+        <span class="li"><span class="ld" style="background:var(--yellow)"></span>Info incompleta</span>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="box" style="margin-bottom:0">
+        <div class="bt">Top agencias · conversión</div>
+        <div style="font-size:10px;color:var(--faint);font-weight:600;margin-bottom:7px">aprobadas / total funnel</div>
+        <div class="bar-g" id="funnelAgencyBars"></div>
+      </div>
+      <div class="box" style="margin-bottom:0">
+        <div class="bt">Top brokers sin agencia</div>
+        <div style="font-size:10px;color:var(--faint);font-weight:600;margin-bottom:7px">aprobadas / total broker</div>
+        <div class="bar-g" id="funnelBrokerBars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SLA ── -->
+  <div class="section" id="tab-sla">
+    <div class="cards" id="slaCards"></div>
+    <div class="wsec">
+      <div class="wsec-title">Resumen semanal — últimas 8 semanas</div>
+      <div style="overflow-x:auto"><table class="wtable" id="slaWeekTable"></table></div>
+    </div>
+    <div class="sep">Zoom — 2 meses más recientes</div>
+    <div class="zoom-grid" id="slaZoom"></div>
+    <div class="box">
+      <div class="bt">SLA mediana por mes · solo aprobadas (días)</div>
+      <div style="font-size:10px;color:var(--faint);font-weight:600;margin-bottom:7px">Meses antiguos acumulan tiempo en sistema — la tendencia ↓ es lo relevante</div>
+      <div class="ch" style="height:185px"><canvas id="slaChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════
+const C = {
+  g:'#72DDA3', b:'#BBE3E3', y:'#F3CE98',
+  c:'#FFB59C', p:'#F9D3CD', gr:'#9CA3AF',
+  dk:'#1F2937', mid:'#374151'
+};
+const EXCLUDE_REASONS = ['Registro duplicado','Pruebas'];
+const APROBADAS_STATUS = ['Aprobada | Falta info contrato','Información de contrato completada','Información Completa'];
+
+let activeCharts = {};
+
+// ════════════════════════════════════════
+// FILE HANDLING
+// ════════════════════════════════════════
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) processFile(e.target.files[0]); });
+
+function processFile(file) {
+  document.getElementById('uploadScreen').style.display = 'none';
+  document.getElementById('loadingMsg').style.display = 'block';
+  document.getElementById('uploadError').style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: null });
+      if (!raw.length) throw new Error('empty');
+      buildDashboard(raw, file.name, sheetName);
+    } catch(err) {
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('uploadScreen').style.display = 'flex';
+      document.getElementById('uploadError').style.display = 'block';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function resetDashboard() {
+  Object.values(activeCharts).forEach(ch => ch.destroy());
+  activeCharts = {};
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('uploadScreen').style.display = 'flex';
+  fileInput.value = '';
+}
+
+// ════════════════════════════════════════
+// DATA PROCESSING
+// ════════════════════════════════════════
+function parseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}
+
+function buildDashboard(rows, fileName, sheetName) {
+  Chart.defaults.font.family = "'Red Hat Display', sans-serif";
+
+  // Normalise rows
+  rows.forEach(r => {
+    r._created = parseDate(r['created_at']);
+    r._updated = parseDate(r['updated_at']);
+    r._paid    = parseDate(r['paid_at']);
+    r._mes     = r['Mes RA'] ? parseInt(r['Mes RA']) : (r._created ? r._created.getMonth()+1 : null);
+    r._year    = r['Año RA'] ? parseInt(r['Año RA']) : (r._created ? r._created.getFullYear() : null);
+    r._period  = r._year && r._mes ? `${r._year}-${String(r._mes).padStart(2,'0')}` : null;
+    r._status  = (r['status'] || '').trim();
+    r._arch_reason = (r['archived_reason'] || '').trim();
+    r._agency  = (r['agency'] || '').trim();
+    r._broker  = (r['broker'] || '').trim();
+    r._price   = parseFloat(r['application_price']) || 0;
+    r._isPaid  = !!r._paid;
+    r._isArch  = r._status === 'Archivado';
+    r._isExcl  = EXCLUDE_REASONS.some(ex => r._arch_reason.toLowerCase().includes(ex.toLowerCase()));
+    r._isAprob = APROBADAS_STATUS.includes(r._status);
+    r._isInc   = r._status === 'Información incompleta';
+    // week (ISO)
+    if (r._created) {
+      const d = new Date(r._created);
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() + 4 - day);
+      const yearStart = new Date(d.getFullYear(), 0, 1);
+      r._week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      r._weekYear = d.getFullYear();
+      // week start (Monday)
+      const ws2 = new Date(r._created);
+      ws2.setDate(ws2.getDate() - ((ws2.getDay() + 6) % 7));
+      r._weekStart = ws2;
+    }
+  });
+
+  // Periods sorted
+  const periods = [...new Set(rows.filter(r=>r._period).map(r=>r._period))].sort();
+  const last12 = periods.slice(-12);
+
+  // Last 2 months
+  const lastTwo = periods.slice(-2);
+  const [prevMonth, curMonth] = lastTwo.length === 2 ? lastTwo : [null, lastTwo[0]];
+
+  // Month labels
+  const MNAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  function periodLabel(p) {
+    if (!p) return '';
+    const [y,m] = p.split('-');
+    return `${MNAMES[parseInt(m)-1]} ${y.slice(2)}`;
+  }
+
+  // Helper: rows in period
+  const inPeriod = (r, p) => r._period === p;
+  const inFunnel = r => !r._isExcl;
+
+  // ── Monthly aggregates ──
+  function monthMetrics(p) {
+    const m = rows.filter(r => inPeriod(r,p));
+    const mf = m.filter(inFunnel);
+    const aprob = mf.filter(r => r._isAprob);
+    const slaRows = aprob.filter(r => r._created && r._updated);
+    const slaVals = slaRows.map(r => Math.round((r._updated - r._created)/86400000)).filter(v=>v>=0).sort((a,b)=>a-b);
+    const med = slaVals.length ? slaVals[Math.floor(slaVals.length/2)] : null;
+    return {
+      total: m.length,
+      pagadas: m.filter(r=>r._isPaid).length,
+      monto: m.filter(r=>r._isPaid).reduce((s,r)=>s+r._price,0),
+      archivados: m.filter(r=>r._isArch).length,
+      archReal: m.filter(r=>r._isArch && !r._isExcl).length,
+      baseFunnel: mf.length,
+      aprobadas: aprob.length,
+      infoInc: mf.filter(r=>r._isInc).length,
+      conv: mf.length ? Math.round(aprob.length/mf.length*1000)/10 : 0,
+      sla: med,
+      archReasons: Object.fromEntries(
+        Object.entries(m.filter(r=>r._isArch).reduce((acc,r)=>{const k=r._arch_reason||'Sin razón';acc[k]=(acc[k]||0)+1;return acc},{}))
+          .sort((a,b)=>b[1]-a[1])
+      )
+    };
+  }
+
+  // ── Weekly aggregates ──
+  function getWeeks() {
+    const wmap = {};
+    rows.forEach(r => {
+      if (!r._week || !r._weekYear) return;
+      const key = `${r._weekYear}-${String(r._week).padStart(2,'0')}`;
+      if (!wmap[key]) wmap[key] = { key, weekStart: r._weekStart, rows: [] };
+      wmap[key].rows.push(r);
+    });
+    return Object.values(wmap).sort((a,b)=>a.key.localeCompare(b.key)).slice(-8);
+  }
+
+  function weekMetrics(wrows) {
+    const mf = wrows.filter(inFunnel);
+    const aprob = mf.filter(r=>r._isAprob);
+    const slaVals = aprob.filter(r=>r._created&&r._updated)
+      .map(r=>Math.round((r._updated-r._created)/86400000)).filter(v=>v>=0).sort((a,b)=>a-b);
+    const med = slaVals.length ? slaVals[Math.floor(slaVals.length/2)] : null;
+    return {
+      total: wrows.length,
+      pagadas: wrows.filter(r=>r._isPaid).length,
+      monto: wrows.filter(r=>r._isPaid).reduce((s,r)=>s+r._price,0),
+      archivados: wrows.filter(r=>r._isArch).length,
+      archReal: wrows.filter(r=>r._isArch&&!r._isExcl).length,
+      baseFunnel: mf.length,
+      aprobadas: aprob.length,
+      infoInc: mf.filter(r=>r._isInc).length,
+      conv: mf.length ? Math.round(aprob.length/mf.length*1000)/10 : 0,
+      sla: med
+    };
+  }
+
+  // ════════════════
+  // BUILD UI
+  // ════════════════
+
+  // file info
+  document.getElementById('fileBadge').textContent = fileName;
+  document.getElementById('fileLabel').textContent =
+    `${sheetName} · ${rows.length.toLocaleString()} registros · actualizado ${new Date().toLocaleDateString('es-MX')}`;
+
+  // ── VOL CARDS ──
+  const totals = { total:rows.length, pagadas:rows.filter(r=>r._isPaid).length,
+    monto:rows.filter(r=>r._isPaid).reduce((s,r)=>s+r._price,0) };
+  const curM = monthMetrics(curMonth);
+  const prevM = prevMonth ? monthMetrics(prevMonth) : null;
+  const momPct = prevM && prevM.total ? Math.round((curM.total-prevM.total)/prevM.total*100) : null;
+
+  document.getElementById('volCards').innerHTML = `
+    <div class="card"><div class="cl">Total apps</div><div class="cv">${totals.total.toLocaleString()}</div><div class="cs">histórico</div></div>
+    <div class="card"><div class="cl">Pagadas</div><div class="cv" style="color:var(--green)">${totals.pagadas.toLocaleString()}</div><div class="cs">${Math.round(totals.pagadas/totals.total*100)}% del total</div></div>
+    <div class="card"><div class="cl">Monto acumulado</div><div class="cv">$${Math.round(totals.monto/1000)}k</div><div class="cs">apps con pago</div></div>
+    <div class="card"><div class="cl">${periodLabel(curMonth)}</div><div class="cv" style="color:var(--green)">${curM.total}</div><div class="cs">${momPct!==null?(momPct>=0?'+':'')+momPct+'% vs '+periodLabel(prevMonth):'mes más reciente'}</div></div>`;
+
+  // ── WEEKLY TABLES ──
+  const weeks = getWeeks();
+  function fmtWeekLabel(w) {
+    if (!w.weekStart) return `S${w.key.split('-')[1]}`;
+    const d = w.weekStart;
+    return `S${parseInt(w.key.split('-')[1])} (${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')})`;
+  }
+
+  function deltaPill(cur, prev, higherGood=true) {
+    if (prev === null || prev === undefined) return '-';
+    const d = cur - prev, pct = prev !== 0 ? Math.round(d/prev*100) : 0;
+    const good = higherGood ? d >= 0 : d <= 0;
+    const cl = d === 0 ? 'fl' : good ? 'up' : 'dn';
+    return `<span class="delta ${cl}">${d>=0?'+':''}${pct}%</span>`;
+  }
+  function pillConv(v) {
+    const bg = v>=70?'background:#E8FAF1;color:#065F46':v>=55?'background:#FFF9F0;color:#92400E':'background:#FEF2F2;color:#7F1D1D';
+    return `<span class="pill" style="${bg}">${v}%</span>`;
+  }
+  function pillSla(v) {
+    if (v === null || v === undefined) return '-';
+    const bg = v<=14?'background:#E8FAF1;color:#065F46':v<=30?'background:#FFF9F0;color:#92400E':'background:#FEF2F2;color:#7F1D1D';
+    return `<span class="pill" style="${bg}">${v}d</span>`;
+  }
+
+  const vwt = document.getElementById('volWeekTable');
+  vwt.innerHTML = '<tr><th>Semana</th><th>Apps</th><th>vs ant.</th><th>Pagadas</th><th>Monto</th></tr>';
+  weeks.forEach((w,i) => {
+    const m = weekMetrics(w.rows), prev = i > 0 ? weekMetrics(weeks[i-1].rows) : null;
+    const isCur = i === weeks.length-1;
+    vwt.innerHTML += `<tr class="${isCur?'current':''}"><td>${fmtWeekLabel(w)}</td><td>${m.total}</td><td>${deltaPill(m.total,prev?.total)}</td><td>${m.pagadas}</td><td>$${(m.monto/1000).toFixed(1)}k</td></tr>`;
+  });
+
+  const awt = document.getElementById('archWeekTable');
+  awt.innerHTML = '<tr><th>Semana</th><th>Arch.</th><th>% mes</th><th>Dup.</th><th>Reales</th><th>vs ant.</th></tr>';
+  weeks.forEach((w,i) => {
+    const m = weekMetrics(w.rows), prev = i > 0 ? weekMetrics(weeks[i-1].rows) : null;
+    const isCur = i === weeks.length-1;
+    const pct = m.total ? Math.round(m.archivados/m.total*100) : 0;
+    awt.innerHTML += `<tr class="${isCur?'current':''}"><td>${fmtWeekLabel(w)}</td><td>${m.archivados}</td><td>${pct}%</td><td>${m.archivados-m.archReal}</td><td>${m.archReal}</td><td>${deltaPill(m.archReal,prev?.archReal,false)}</td></tr>`;
+  });
+
+  const fwt = document.getElementById('funnelWeekTable');
+  fwt.innerHTML = '<tr><th>Semana</th><th>Base</th><th>Aprob.</th><th>Conv.</th><th>vs ant.</th><th>Info inc.</th></tr>';
+  weeks.forEach((w,i) => {
+    const m = weekMetrics(w.rows), prev = i > 0 ? weekMetrics(weeks[i-1].rows) : null;
+    const isCur = i === weeks.length-1;
+    fwt.innerHTML += `<tr class="${isCur?'current':''}"><td>${fmtWeekLabel(w)}</td><td>${m.baseFunnel}</td><td>${m.aprobadas}</td><td>${pillConv(m.conv)}</td><td>${deltaPill(m.conv,prev?.conv)}</td><td style="${m.infoInc>5?'color:#BA7517':''}">${m.infoInc||'-'}</td></tr>`;
+  });
+
+  const swt = document.getElementById('slaWeekTable');
+  swt.innerHTML = '<tr><th>Semana</th><th>SLA mediana</th><th>vs ant.</th><th>Apps aprob.</th></tr>';
+  weeks.forEach((w,i) => {
+    const m = weekMetrics(w.rows), prev = i > 0 ? weekMetrics(weeks[i-1].rows) : null;
+    const isCur = i === weeks.length-1;
+    swt.innerHTML += `<tr class="${isCur?'current':''}"><td>${fmtWeekLabel(w)}</td><td>${pillSla(m.sla)}</td><td>${deltaPill(m.sla,prev?.sla,false)}</td><td>${m.aprobadas}</td></tr>`;
+  });
+
+  // ── ZOOM ──
+  function buildZoom(containerId, m1, m2, p1, p2, fields) {
+    const el = document.getElementById(containerId);
+    const d12 = m2 && m1 ? Math.round((m2[fields.main]-m1[fields.main])/(m1[fields.main]||1)*100) : null;
+    const dCl = d12 === null ? '' : d12 >= 0 ? 'up' : 'dn';
+    el.innerHTML = `
+      <div class="zcard">
+        <div class="ztitle" style="color:var(--blue)">${periodLabel(p1)}</div>
+        <div class="zstats">${fields.stats.map(s=>`<div class="zs"><div class="zsl">${s.label}</div><div class="zsv" style="${s.color?'color:'+s.color:''}">${s.fmt(m1[s.key])}</div></div>`).join('')}</div>
+        ${fields.note?`<div style="font-size:10px;color:var(--muted);font-weight:600">${fields.note(m1)}</div>`:''}
+      </div>
+      <div class="zcard">
+        <div class="ztitle" style="color:var(--green)">${periodLabel(p2)} ${d12!==null?`<span class="delta ${dCl}" style="font-size:10px">${d12>=0?'+':''}${d12}% ${fields.mainLabel}</span>`:''}</div>
+        <div class="zstats">${fields.stats.map(s=>`<div class="zs"><div class="zsl">${s.label}</div><div class="zsv" style="${s.color?'color:'+s.color:''}">${s.fmt(m2[s.key])}</div></div>`).join('')}</div>
+        ${fields.note?`<div style="font-size:10px;color:var(--muted);font-weight:600">${fields.note(m2)}</div>`:''}
+      </div>`;
+  }
+
+  if (prevM) {
+    buildZoom('volZoom', prevM, curM, prevMonth, curMonth, {
+      main:'total', mainLabel:'apps',
+      stats:[
+        {key:'total',label:'Apps',fmt:v=>v},
+        {key:'pagadas',label:'Pagadas',fmt:v=>v,color:'var(--green)'},
+        {key:'monto',label:'Monto',fmt:v=>'$'+Math.round(v/1000)+'k'},
+        {key:'pagadas',label:'Conv.',fmt:(v,m)=>Math.round(v/(curM.total||1)*100)+'%'}
+      ]
+    });
+    buildZoom('archZoom', prevM, curM, prevMonth, curMonth, {
+      main:'archivados', mainLabel:'arch.',
+      stats:[
+        {key:'archivados',label:'Archivados',fmt:v=>v,color:'var(--coral)'},
+        {key:'archivados',label:'% del mes',fmt:(v,obj)=>Math.round(prevM.archivados/(prevM.total||1)*100)+'%'},
+        {key:'archReal',label:'Reales',fmt:v=>v,color:'var(--yellow)'},
+        {key:'archivados',label:'Reg. dup.',fmt:v=>prevM.archivados-prevM.archReal}
+      ],
+      note: m => Object.entries(m.archReasons).filter(([k])=>!EXCLUDE_REASONS.some(e=>k.toLowerCase().includes(e.toLowerCase()))).slice(0,3).map(([k,v])=>`${k.substring(0,25)} (${v})`).join(' · ')
+    });
+    buildZoom('funnelZoom', prevM, curM, prevMonth, curMonth, {
+      main:'aprobadas', mainLabel:'aprob.',
+      stats:[
+        {key:'baseFunnel',label:'Base funnel',fmt:v=>v},
+        {key:'aprobadas',label:'Aprobadas',fmt:v=>v,color:'var(--green)'},
+        {key:'conv',label:'Conv.',fmt:v=>v+'%',color:'var(--green)'},
+        {key:'infoInc',label:'Info inc.',fmt:v=>v,color:'var(--yellow)'}
+      ]
+    });
+    buildZoom('slaZoom', prevM, curM, prevMonth, curMonth, {
+      main:'sla', mainLabel:'SLA',
+      stats:[
+        {key:'sla',label:'SLA mediana',fmt:v=>v?v+'d':'-',color:'var(--yellow)'},
+        {key:'aprobadas',label:'Apps medidas',fmt:v=>v}
+      ]
+    });
+  } else {
+    ['volZoom','archZoom','funnelZoom','slaZoom'].forEach(id=>{
+      document.getElementById(id).innerHTML=`<div class="zcard" style="grid-column:1/-1;text-align:center;color:var(--faint);font-size:12px;padding:2rem">Solo hay un mes de datos disponible</div>`;
+    });
+  }
+
+  // ── MONTHLY CHARTS ──
+  const monthMetricsArr = last12.map(p => monthMetrics(p));
+  const mLabels = last12.map(p => periodLabel(p));
+
+  function barValPlugin(fmtFn) {
+    return {
+      id: 'bv' + Math.random().toString(36).slice(2),
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets.forEach((ds, di) => {
+          const meta = chart.getDatasetMeta(di);
+          if (meta.hidden) return;
+          meta.data.forEach((el, i) => {
+            const v = ds.data[i]; if (!v && v !== 0) return;
+            const txt = fmtFn ? fmtFn(v) : String(v);
+            ctx.save();
+            ctx.fillStyle = ds.type === 'line' ? (ds.borderColor || '#374151') : '#374151';
+            ctx.font = `700 9px 'Red Hat Display',sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+            ds.type === 'line' ? ctx.fillText(txt, el.x, el.y-4) : ctx.fillText(txt, el.x, el.y-2);
+            ctx.restore();
+          });
+        });
+      }
+    };
+  }
+
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    layout: { padding: { top: 18 } }
+  };
+  const xOpts = { ticks: { font:{size:9}, color:C.gr, maxRotation:45, autoSkip:false }, grid: { display:false } };
+  const yOpts = { ticks: { font:{size:9}, color:C.gr }, grid: { color:'rgba(0,0,0,0.04)' }, border: { dash:[3,3] } };
+
+  function mkChart(id, config) {
+    if (activeCharts[id]) activeCharts[id].destroy();
+    activeCharts[id] = new Chart(document.getElementById(id), config);
+  }
+
+  // Daily chart (last 2 months)
+  const days = Array.from({length:31}, (_,i)=>i+1);
+  function dailyArr(period) {
+    const [y,m] = period.split('-').map(Number);
+    const counts = {};
+    rows.filter(r => r._created && r._created.getFullYear()===y && r._created.getMonth()+1===m)
+      .forEach(r => { const d=r._created.getDate(); counts[d]=(counts[d]||0)+1; });
+    return days.map(d => counts[d]||0);
+  }
+  const dayDatasets = [];
+  if (prevMonth) dayDatasets.push({label:periodLabel(prevMonth),data:dailyArr(prevMonth),backgroundColor:C.b+'cc',borderColor:C.b,borderWidth:0,borderRadius:4});
+  dayDatasets.push({label:periodLabel(curMonth),data:dailyArr(curMonth),backgroundColor:C.g+'cc',borderColor:C.g,borderWidth:0,borderRadius:4});
+
+  const dayLeg = document.getElementById('dayLegend');
+  dayLeg.innerHTML = dayDatasets.map(ds=>`<span class="li"><span class="ld" style="background:${ds.borderColor}"></span>${ds.label}</span>`).join('');
+
+  mkChart('dayChart',{type:'bar',data:{labels:days,datasets:dayDatasets},
+    options:{...baseOpts,layout:{padding:{top:16}},plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>'Día '+c[0].label}}},
+      scales:{x:{ticks:{font:{size:8},color:C.gr},grid:{display:false}},y:{...yOpts,max:Math.max(...dayDatasets.flatMap(d=>d.data))+4}}},
+    plugins:[barValPlugin()]});
+
+  // Vol chart
+  mkChart('volChart',{type:'bar',
+    data:{labels:mLabels,datasets:[
+      {type:'bar',label:'Apps',data:monthMetricsArr.map(m=>m.total),backgroundColor:C.b+'cc',borderColor:C.b,borderWidth:0,borderRadius:5,yAxisID:'y'},
+      {type:'line',label:'Pagadas',data:monthMetricsArr.map(m=>m.pagadas),borderColor:C.g,borderWidth:2,pointRadius:3,pointBackgroundColor:C.g,tension:0.35,yAxisID:'y'}
+    ]},
+    options:{...baseOpts,scales:{x:xOpts,y:yOpts}},
+    plugins:[barValPlugin()]});
+
+  // Growth badges
+  const gr2 = document.getElementById('growthRow');
+  gr2.innerHTML = '';
+  monthMetricsArr.forEach((m,i) => {
+    if (i===0) return;
+    const prev2 = monthMetricsArr[i-1].total;
+    const pct = prev2 ? Math.round((m.total-prev2)/prev2*100) : 0;
+    const st = pct>0?'background:#E8FAF1;color:#065F46':pct<0?'background:#FEF2F2;color:#7F1D1D':'background:var(--bg);color:var(--muted)';
+    const b = document.createElement('span');
+    b.style.cssText = `${st};padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;font-family:'Red Hat Display',sans-serif`;
+    b.textContent = `${mLabels[i]}: ${pct>0?'+':''}${pct}%`;
+    gr2.appendChild(b);
+  });
+
+  // Monto chart
+  mkChart('montoChart',{type:'bar',
+    data:{labels:mLabels,datasets:[{data:monthMetricsArr.map(m=>m.monto),backgroundColor:C.y+'cc',borderColor:C.y,borderWidth:0,borderRadius:5}]},
+    options:{...baseOpts,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+Math.round(c.raw).toLocaleString()}}},
+      scales:{x:xOpts,y:{...yOpts,ticks:{font:{size:9},color:C.gr,callback:v=>'$'+Math.round(v/1000)+'k'}}}},
+    plugins:[barValPlugin(v=>'$'+Math.round(v/1000)+'k')]});
+
+  // ── ARCH PIE ──
+  const allArch = rows.filter(r=>r._isArch);
+  const reasonMap = allArch.reduce((acc,r)=>{ const k=r._arch_reason||'Sin razón'; acc[k]=(acc[k]||0)+1; return acc; },{});
+  const sortedReasons = Object.entries(reasonMap).sort((a,b)=>b[1]-a[1]);
+  const topReasons = sortedReasons.slice(0,5);
+  const otherCount = sortedReasons.slice(5).reduce((s,[,v])=>s+v,0);
+  if (otherCount) topReasons.push(['Otras razones', otherCount]);
+  const pieColors = [C.gr, C.c, C.y, C.p, C.b, C.gr+'88'];
+  const totalArch = allArch.length;
+
+  mkChart('archPie',{type:'doughnut',
+    data:{labels:topReasons.map(r=>r[0]),datasets:[{data:topReasons.map(r=>r[1]),backgroundColor:pieColors.slice(0,topReasons.length),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'50%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' — '+Math.round(c.raw/totalArch*100)+'%'}}}},
+    plugins:[{id:'pct',afterDatasetsDraw(chart){
+      const ctx=chart.ctx;
+      chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+        const pct=Math.round(topReasons[i][1]/totalArch*100); if(pct<4)return;
+        const mid=arc.startAngle+(arc.endAngle-arc.startAngle)/2;
+        const r=(arc.innerRadius+arc.outerRadius)/2;
+        ctx.save();ctx.fillStyle='#1F2937';ctx.font="700 10px 'Red Hat Display',sans-serif";
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(pct+'%',arc.x+Math.cos(mid)*r,arc.y+Math.sin(mid)*r);ctx.restore();
+      });
+    }}]
+  });
+
+  const legEl = document.getElementById('archLegend');
+  legEl.innerHTML = topReasons.map(([l,v],i) =>
+    `<span class="li"><span class="ld" style="background:${pieColors[i]}"></span>${l} <strong style="color:var(--dark)">${Math.round(v/totalArch*100)}%</strong></span>`
+  ).join('');
+
+  // Reason cards
+  const reasonDescriptions = {
+    'Registro duplicado': 'Más de la mitad de los archivados. Potencial de mejora en el proceso de registro.',
+    'Inquilino no brinda información': 'El inquilino inició pero no completó. Oportunidad de seguimiento activo.',
+    'Inquilino no brinda información ': 'El inquilino inició pero no completó. Oportunidad de seguimiento activo.',
+    'Asesor no proporciona información': 'El broker no completó la info. Punto de capacitación o recordatorio.',
+    'Inquilino deja de contestar': 'Respondió al inicio pero dejó de hacerlo.',
+    'Inquilino encontró otro departamento': 'El inquilino optó por otra opción.',
+  };
+  const emojis = [C.gr, C.c, C.y, C.p, C.b, C.gr+'88'];
+  const emojiIcons = ['📋','💬','🧑‍💼','📵','🏠','📁'];
+  const rcEl = document.getElementById('reasonCards');
+  rcEl.innerHTML = topReasons.map(([name, cnt], i) => {
+    const pct = Math.round(cnt/totalArch*100);
+    const desc = reasonDescriptions[name] || 'Revisar casos para identificar patrón.';
+    return `<div class="rc"><div class="rd" style="background:${pieColors[i]}22">${emojiIcons[i]||'📁'}</div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--dark);margin-bottom:1px">${name}</div>
+      <div><span style="font-size:16px;font-weight:700;color:${pieColors[i]};margin-right:4px">${pct}%</span>
+      <span style="font-size:10px;color:var(--muted);font-weight:600">${cnt} apps</span></div>
+      <div class="rdesc">${desc}</div></div></div>`;
+  }).join('');
+
+  // Agency / broker bars
+  function agencyBars(containerId, dataArr, maxVal, colFn, valFn, lblWidth=100) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = '';
+    dataArr.forEach(d => {
+      const w = valFn(d), col = colFn(d);
+      const txt = typeof w === 'string' ? w : w + '%';
+      const wPct = Math.min(100, typeof w === 'number' ? w : d.pct || 50);
+      el.innerHTML += `<div class="brow"><div class="blbl" style="width:${lblWidth}px">${d.n}</div><div class="btrk"><div class="bfll" style="width:${wPct}%;background:${col}"><span>${txt}</span></div></div></div>`;
+    });
+  }
+
+  // Arch by agency
+  const agencyTotals = {}, agencyArch = {};
+  rows.forEach(r => { const ag = r._agency || 'Sin agencia'; agencyTotals[ag] = (agencyTotals[ag]||0)+1; });
+  rows.filter(r=>r._isArch).forEach(r => { const ag = r._agency || 'Sin agencia'; agencyArch[ag] = (agencyArch[ag]||0)+1; });
+  const agencyArchPct = Object.entries(agencyTotals)
+    .filter(([,t])=>t>=5)
+    .map(([n,t])=>({n:n,arch:agencyArch[n]||0,total:t,pct:Math.round((agencyArch[n]||0)/t*100)}))
+    .sort((a,b)=>b.pct-a.pct).slice(0,8);
+
+  agencyBars('archAgencyBars', agencyArchPct, 100, d=>d.pct>60?C.c:d.pct>40?C.y:C.g, d=>d.pct, 100);
+
+  // Arch brokers without agency
+  const brokerArchMap = {};
+  rows.filter(r=>r._isArch&&!r._agency).forEach(r=>{ const b=r._broker||'Sin broker'; brokerArchMap[b]=(brokerArchMap[b]||0)+1; });
+  const topArchBrokers = Object.entries(brokerArchMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([n,v])=>({n:n.trim(),v,pct:Math.round(v/Math.max(...Object.values(brokerArchMap))*100)}));
+  agencyBars('archBrokerBars', topArchBrokers, null, ()=>C.c, d=>`${d.v} arch`, 110);
+
+  // Funnel charts
+  mkChart('funnelMesChart',{type:'bar',
+    data:{labels:mLabels,datasets:[
+      {label:'Aprobadas',data:monthMetricsArr.map(m=>m.aprobadas),backgroundColor:C.g+'cc',borderColor:C.g,borderWidth:0,borderRadius:5},
+      {label:'Info inc.',data:monthMetricsArr.map(m=>m.infoInc),backgroundColor:C.y+'cc',borderColor:C.y,borderWidth:0,borderRadius:5}
+    ]},
+    options:{...baseOpts,scales:{x:xOpts,y:yOpts}},
+    plugins:[barValPlugin()]});
+
+  // Funnel agency
+  const agFunnel = {}, agFunnelTotal = {};
+  rows.filter(inFunnel).forEach(r=>{ const ag=r._agency||'Sin agencia'; agFunnelTotal[ag]=(agFunnelTotal[ag]||0)+1; });
+  rows.filter(r=>inFunnel(r)&&r._isAprob).forEach(r=>{ const ag=r._agency||'Sin agencia'; agFunnel[ag]=(agFunnel[ag]||0)+1; });
+  const agFunnelPct = Object.entries(agFunnelTotal).filter(([,t])=>t>=5)
+    .map(([n,t])=>({n:n,aprob:agFunnel[n]||0,total:t,pct:Math.round((agFunnel[n]||0)/t*100)}))
+    .sort((a,b)=>b.pct-a.pct).slice(0,8);
+  agencyBars('funnelAgencyBars', agFunnelPct, 100, d=>d.pct>=70?C.g:d.pct>=60?C.y:C.c, d=>d.pct, 100);
+
+  // Funnel brokers
+  const brFunnel = {}, brFunnelTotal = {};
+  rows.filter(r=>inFunnel(r)&&!r._agency).forEach(r=>{ const b=r._broker||'Sin broker'; brFunnelTotal[b]=(brFunnelTotal[b]||0)+1; });
+  rows.filter(r=>inFunnel(r)&&r._isAprob&&!r._agency).forEach(r=>{ const b=r._broker||'Sin broker'; brFunnel[b]=(brFunnel[b]||0)+1; });
+  const brFunnelPct = Object.entries(brFunnelTotal).filter(([,t])=>t>=5)
+    .map(([n,t])=>({n:n.trim(),aprob:brFunnel[n]||0,total:t,pct:Math.round((brFunnel[n]||0)/t*100)}))
+    .sort((a,b)=>b.pct-a.pct).slice(0,8);
+  agencyBars('funnelBrokerBars', brFunnelPct, 100, d=>d.pct>=85?C.g:d.pct>=65?C.y:C.c, d=>d.pct, 110);
+
+  // SLA chart
+  document.getElementById('slaCards').innerHTML = `
+    <div class="card"><div class="cl">SLA mediana global</div><div class="cv" style="color:var(--yellow)">${monthMetricsArr.map(m=>m.sla).filter(v=>v!==null).sort((a,b)=>a-b)[Math.floor(monthMetricsArr.filter(m=>m.sla!==null).length/2)]||'-'}d</div><div class="cs">solo aprobadas</div></div>
+    <div class="card"><div class="cl">${periodLabel(prevMonth)}</div><div class="cv" style="color:var(--yellow)">${prevM?.sla||'-'}d</div><div class="cs">mediana</div></div>
+    <div class="card"><div class="cl">${periodLabel(curMonth)}</div><div class="cv" style="color:var(--green)">${curM.sla||'-'}d</div><div class="cs">tendencia ↓</div></div>`;
+
+  mkChart('slaChart',{type:'bar',
+    data:{labels:mLabels,datasets:[{data:monthMetricsArr.map(m=>m.sla||0),
+      backgroundColor:mLabels.map((_,i)=>i>=last12.length-2?C.g+'cc':C.y+'88'),
+      borderColor:mLabels.map((_,i)=>i>=last12.length-2?C.g:C.y),
+      borderWidth:0,borderRadius:5}]},
+    options:{...baseOpts,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw}d`}}},
+      scales:{x:xOpts,y:{...yOpts,ticks:{font:{size:9},color:C.gr,callback:v=>v+'d'}}}},
+    plugins:[barValPlugin(v=>v+'d')]});
+
+  // ARCH cards
+  document.getElementById('archCards').innerHTML = `
+    <div class="card"><div class="cl">Archivados totales</div><div class="cv" style="color:var(--coral)">${totalArch}</div><div class="cs">${Math.round(totalArch/rows.length*100)}% del total</div></div>
+    <div class="card"><div class="cl">Reales</div><div class="cv" style="color:var(--yellow)">${rows.filter(r=>r._isArch&&!r._isExcl).length}</div><div class="cs">excl. duplicados</div></div>
+    <div class="card"><div class="cl">Reg. duplicado</div><div class="cv">${rows.filter(r=>r._isArch&&r._isExcl).length}</div><div class="cs">${Math.round(rows.filter(r=>r._isArch&&r._isExcl).length/totalArch*100)}% de arch.</div></div>
+    <div class="card"><div class="cl">Pagadas/total</div><div class="cv" style="color:var(--green)">${Math.round(totals.pagadas/totals.total*100)}%</div><div class="cs">${totals.pagadas} apps</div></div>`;
+
+  // FUNNEL cards
+  const totalFunnel = rows.filter(inFunnel).length;
+  const totalAprob = rows.filter(r=>inFunnel(r)&&r._isAprob).length;
+  const totalPagFunnel = rows.filter(r=>inFunnel(r)&&r._isPaid).length;
+  const totalInc = rows.filter(r=>inFunnel(r)&&r._isInc).length;
+  document.getElementById('funnelCards').innerHTML = `
+    <div class="card"><div class="cl">Base funnel</div><div class="cv">${totalFunnel.toLocaleString()}</div><div class="cs">excl. duplicados</div></div>
+    <div class="card"><div class="cl">Pagadas</div><div class="cv" style="color:var(--green)">${totalPagFunnel}</div><div class="cs">${Math.round(totalPagFunnel/totalFunnel*100)}% del funnel</div></div>
+    <div class="card"><div class="cl">Aprobadas</div><div class="cv" style="color:var(--green)">${totalAprob}</div><div class="cs">${Math.round(totalAprob/totalFunnel*100)}% del funnel</div></div>
+    <div class="card"><div class="cl">Info incompleta</div><div class="cv" style="color:var(--yellow)">${totalInc}</div><div class="cs">${Math.round(totalInc/totalFunnel*100)}% del funnel</div></div>`;
+
+  // Show dashboard
+  document.getElementById('loadingMsg').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+// ════════════════════════════════════════
+// TAB SWITCHING
+// ════════════════════════════════════════
+function sw(n, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-'+n).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
